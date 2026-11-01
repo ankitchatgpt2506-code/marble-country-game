@@ -1,0 +1,2021 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:," />
+    <title>Marble Country Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #04060d;
+        --bg-2: #080b16;
+        --panel: #101527;
+        --panel-2: #161c33;
+        --line: #232c4a;
+        --text: #f2f5ff;
+        --muted: #8b95b5;
+        --accent: #ffb02e;
+        --good: #2fd35f;
+        --danger: #ff5252;
+        --radius: 18px;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background:
+          radial-gradient(900px 500px at 50% -120px, #131b38 0%, transparent 60%),
+          var(--bg);
+        color: var(--text);
+        font-family: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+      }
+      /* 9:16-first column: on a vertical phone / stream source the arena,
+         score strip and controls fill the frame; on desktop it centres. */
+      .wrap {
+        max-width: min(620px, 100%);
+        margin: 0 auto;
+        padding: 12px 12px 30px;
+      }
+
+      /* ---------- top status bar ---------- */
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 9px 16px;
+      }
+      .timer {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 21px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .timer svg { flex: none; opacity: 0.85; }
+      .timer .alive {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      .velocity {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+        padding: 6px 2px;
+        white-space: nowrap;
+      }
+      .velocity:hover { color: var(--text); }
+      .velocity:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+      .topbar.sudden {
+        border-color: rgba(255, 82, 82, 0.65);
+        box-shadow: 0 0 0 1px rgba(255, 82, 82, 0.22), 0 0 22px rgba(255, 82, 82, 0.16);
+      }
+      .topbar.sudden .timer { color: var(--danger); }
+
+      /* ---------- series bar ---------- */
+      .seriesbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 10px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 8px 14px;
+        font-size: 13.5px;
+        font-weight: 700;
+      }
+      .seriesbar .round { color: var(--accent); letter-spacing: 0.1em; font-weight: 900; white-space: nowrap; }
+      .seriesbar .leader { color: var(--muted); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .seriesbar .leader b { color: var(--text); }
+
+      /* ---------- headline ---------- */
+      .headline { text-align: center; margin: 14px 4px 2px; }
+      .headline h1 {
+        margin: 0;
+        font-size: clamp(24px, 6vw, 34px);
+        font-weight: 900;
+        line-height: 1.08;
+      }
+      .headline p { margin: 6px 0 0; color: var(--muted); font-size: 14px; font-weight: 500; }
+
+      /* ---------- arena ---------- */
+      .arena-shell { position: relative; margin-top: 12px; }
+      canvas#arena {
+        display: block;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        border-radius: 50%;
+        touch-action: none;
+      }
+      .arena-overlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+        pointer-events: none;
+      }
+      .arena-overlay.show { display: flex; }
+      .overlay-card {
+        background: rgba(6, 9, 20, 0.86);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 24px 28px 22px;
+        max-width: 88%;
+        pointer-events: auto;
+      }
+      .overlay-card .flag { line-height: 0; }
+      .overlay-card .flag img {
+        width: 84px; height: 84px;
+        border-radius: 50%;
+        border: 3px solid rgba(255,255,255,0.9);
+        box-shadow: 0 6px 24px rgba(0,0,0,0.55);
+        object-fit: cover;
+      }
+      .overlay-card h2 { margin: 10px 0 2px; font-size: 29px; font-weight: 900; }
+      .overlay-card .sub { color: var(--accent); font-weight: 800; letter-spacing: 0.16em; font-size: 13px; text-transform: uppercase; margin-top: 10px; }
+      .overlay-card .stats { color: var(--muted); font-size: 14px; margin: 9px 0 6px; font-weight: 500; }
+      .overlay-card .countdown { color: var(--text); font-size: 15px; font-weight: 800; margin: 4px 0 16px; min-height: 20px; }
+      .overlay-card .pick-result { font-size: 15px; font-weight: 700; margin: 0 0 14px; }
+      .overlay-card .pick-result.win { color: var(--good); }
+      .overlay-card .pick-result.lose { color: var(--muted); }
+
+      /* big moment banner — TOP 5 / FINAL DUEL / SUDDEN DEATH */
+      .moment {
+        position: absolute;
+        left: 50%;
+        top: 16%;
+        transform: translate(-50%, -50%) scale(0.7);
+        font-size: clamp(26px, 8vw, 44px);
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        color: #fff;
+        text-shadow: 0 0 18px rgba(255,176,46,0.65), 0 3px 0 rgba(0,0,0,0.55);
+        opacity: 0;
+        pointer-events: none;
+        white-space: nowrap;
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        z-index: 3;
+      }
+      .moment.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      .moment.red { text-shadow: 0 0 18px rgba(255,82,82,0.8), 0 3px 0 rgba(0,0,0,0.55); }
+
+      /* audience CTA banner — double tap / comment prompts */
+      .cta {
+        position: absolute;
+        left: 50%;
+        bottom: 7%;
+        transform: translateX(-50%) translateY(16px);
+        width: min(88%, 430px);
+        text-align: center;
+        background: rgba(8, 11, 24, 0.88);
+        border: 2px solid var(--accent);
+        border-radius: 18px;
+        padding: 12px 16px 13px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+        z-index: 4;
+      }
+      .cta.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      .cta .cta-big {
+        font-size: clamp(19px, 5.4vw, 26px);
+        font-weight: 900;
+        letter-spacing: 0.03em;
+        line-height: 1.15;
+        color: #fff;
+      }
+      .cta .cta-big em { color: var(--accent); font-style: normal; }
+      .cta .cta-sub { color: var(--muted); font-size: 13px; font-weight: 600; margin-top: 3px; }
+      .cta .rings { position: relative; height: 30px; margin-bottom: 2px; }
+      .cta .rings span {
+        position: absolute;
+        left: 50%; top: 50%;
+        width: 14px; height: 14px;
+        margin: -7px 0 0 -7px;
+        border-radius: 50%;
+        border: 3px solid var(--accent);
+        opacity: 0;
+      }
+      .cta.show .rings span { animation: tapring 0.9s ease-out infinite; }
+      .cta.show .rings span:nth-child(2) { animation-delay: 0.3s; }
+      .cta.show .rings span:nth-child(3) { animation-delay: 0.6s; }
+      @keyframes tapring {
+        0% { transform: scale(0.4); opacity: 0.95; }
+        100% { transform: scale(2.6); opacity: 0; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .cta.show .rings span { animation: none; opacity: 0.7; }
+      }
+
+      /* ---------- podium strip (top 3 of the series) ---------- */
+      .podium {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .podium .slot {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 12px 6px 7px;
+        min-width: 0;
+      }
+      .podium .slot.first { border-color: var(--accent); }
+      .podium .rk { font-weight: 900; font-size: 14px; color: var(--accent); flex: none; }
+      .podium img { width: 26px; height: 26px; border-radius: 50%; flex: none; }
+      .podium .nm { font-weight: 800; font-size: 12.5px; letter-spacing: 0.03em; text-transform: uppercase; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .podium .wn { font-weight: 900; font-size: 15px; font-variant-numeric: tabular-nums; flex: none; }
+
+      /* ---------- controls ---------- */
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+        align-items: stretch;
+      }
+      .btn {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--text);
+        font: inherit;
+        font-weight: 800;
+        font-size: 14.5px;
+        letter-spacing: 0.03em;
+        border-radius: 999px;
+        padding: 11px 18px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .btn:hover { border-color: #35426e; }
+      .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #1a1206;
+        flex: 1 1 150px;
+        justify-content: center;
+        font-size: 16px;
+      }
+      .btn.primary:hover { background: #ffb940; }
+      .seg {
+        display: inline-flex;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 4px;
+        gap: 2px;
+        align-items: center;
+      }
+      .seg span {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.09em;
+        color: var(--muted);
+        text-transform: uppercase;
+        padding: 0 6px 0 10px;
+      }
+      .seg button {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-weight: 800;
+        font-size: 14.5px;
+        min-width: 38px;
+        height: 38px;
+        padding: 0 8px;
+        border-radius: 999px;
+        cursor: pointer;
+        font-variant-numeric: tabular-nums;
+      }
+      .seg button[aria-pressed="true"] { background: var(--accent); color: #1a1206; }
+      .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+      .pickline {
+        margin: 12px 2px 0;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 500;
+        min-height: 20px;
+      }
+      .pickline b { color: var(--text); }
+      .pickline .sd { color: var(--danger); font-weight: 800; letter-spacing: 0.06em; }
+
+      /* ---------- country chips (this round's line strength) ---------- */
+      .chips {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .chip {
+        appearance: none;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        background: var(--panel);
+        border: 2px solid var(--chip-color, var(--line));
+        border-radius: 999px;
+        padding: 5px 9px 5px 5px;
+        color: var(--text);
+        font: inherit;
+        cursor: pointer;
+        transition: opacity 0.3s ease, filter 0.3s ease;
+        min-width: 0;
+      }
+      .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .chip .disc {
+        width: 28px; height: 28px; flex: none;
+        border-radius: 50%;
+        background: var(--bg-2);
+        overflow: hidden;
+        line-height: 0;
+      }
+      .chip .disc img { width: 100%; height: 100%; display: block; border-radius: 50%; }
+      .chip .name { font-weight: 800; font-size: 11.5px; letter-spacing: 0.03em; text-transform: uppercase; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .chip .count {
+        font-weight: 900;
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+        background: color-mix(in srgb, var(--chip-color, #888) 26%, transparent);
+        color: var(--chip-color, var(--text));
+        border-radius: 999px;
+        padding: 3px 8px;
+        min-width: 38px;
+        text-align: center;
+      }
+      .chip.dead { opacity: 0.42; filter: grayscale(0.9); }
+      .chip.dead .name { text-decoration: line-through; }
+      .chip.dead .count { background: #1b2138; color: var(--muted); }
+      .chip.picked { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+
+      /* ---------- series standings ---------- */
+      .standings {
+        margin-top: 20px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+      }
+      .standings h3, .log h3 {
+        margin: 0 0 10px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .standings h3 .hint { letter-spacing: 0.04em; text-transform: none; font-weight: 600; }
+      .standings ol {
+        list-style: none;
+        margin: 0; padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+        gap: 6px 14px;
+      }
+      .standings li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 8px;
+        border-radius: 10px;
+        background: var(--bg-2);
+        font-size: 13.5px;
+        font-weight: 700;
+        min-width: 0;
+      }
+      .standings li .rk { font-weight: 900; font-variant-numeric: tabular-nums; color: var(--muted); width: 22px; flex: none; }
+      .standings li.top1 .rk { color: var(--accent); }
+      .standings li.top2 .rk, .standings li.top3 .rk { color: var(--text); }
+      .standings li img { width: 22px; height: 22px; border-radius: 50%; flex: none; }
+      .standings li .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .standings li .wn {
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+        background: #1b2138;
+        border-radius: 999px;
+        padding: 2px 9px;
+        flex: none;
+      }
+      .standings li.top1 .wn { background: var(--accent); color: #1a1206; }
+
+      /* ---------- battle log ---------- */
+      .log {
+        margin-top: 16px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+      }
+      .log ul { list-style: none; margin: 0; padding: 0; }
+      .log li {
+        padding: 7px 0;
+        border-top: 1px solid #1a2140;
+        font-size: 14.5px;
+        font-weight: 500;
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+      }
+      .log li:first-child { border-top: 0; }
+      .log li .t { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; flex: none; }
+      .log li.empty { color: var(--muted); border-top: 0; }
+
+      .howto {
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.55;
+        font-weight: 500;
+      }
+      .howto b { color: var(--text); }
+
+      @media (max-width: 430px) {
+        .timer { font-size: 18px; }
+        .velocity { font-size: 11.5px; }
+        .podium .nm { font-size: 11px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+
+      <!-- top status bar -->
+      <div class="topbar" id="topbar">
+        <div class="timer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="13" r="8"></circle>
+            <path d="M12 9v4l2.5 2.5"></path>
+            <path d="M9 2.5h6"></path>
+          </svg>
+          <span id="clock">00:00</span>
+          <span class="alive" id="aliveLabel">25 alive</span>
+        </div>
+        <button class="velocity" id="speedBtn" type="button" aria-label="Change marble speed">
+          <span id="speedLabel">Normal</span>&nbsp;Velocity
+        </button>
+      </div>
+
+      <!-- series bar -->
+      <div class="seriesbar">
+        <span class="round" id="roundLabel">ROUND 1 / 10</span>
+        <span class="leader" id="leaderLabel">Series leader: —</span>
+      </div>
+
+      <div class="headline">
+        <h1>Marble Country Battle</h1>
+        <p>25 famous countries, one arena. Small flag marbles slice each other&rsquo;s lines — when a country&rsquo;s line is fully cut, it&rsquo;s out. Slow, long, intense fights over 10 rounds back to back — and when a series ends, a brand-new one starts on its own.</p>
+      </div>
+
+      <!-- arena -->
+      <div class="arena-shell">
+        <canvas id="arena" aria-label="Circular arena where country flag marbles battle"></canvas>
+        <div class="moment" id="moment"></div>
+        <div class="cta" id="cta" aria-hidden="true">
+          <div class="rings" id="ctaRings"><span></span><span></span><span></span></div>
+          <div class="cta-big" id="ctaBig">DOUBLE TAP!</div>
+          <div class="cta-sub" id="ctaSub"></div>
+        </div>
+        <div class="arena-overlay" id="overlay">
+          <div class="overlay-card">
+            <div class="flag" id="ovFlag"></div>
+            <div class="sub" id="ovSub">Round Winner</div>
+            <h2 id="ovName">—</h2>
+            <p class="stats" id="ovStats">—</p>
+            <p class="pick-result" id="ovPick"></p>
+            <p class="countdown" id="ovCount"></p>
+            <button class="btn primary" id="againBtn" type="button">Next Round</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- series top 3 -->
+      <div class="podium" id="podium"></div>
+
+      <!-- controls -->
+      <div class="controls">
+        <button class="btn primary" id="playBtn" type="button">▶ Start Series</button>
+        <button class="btn" id="shuffleBtn" type="button">⟳ New Line-up</button>
+        <button class="btn" id="soundBtn" type="button" aria-pressed="true">♪ Sound On</button>
+        <button class="btn" id="voiceBtn" type="button" aria-pressed="true">🔊 Voice On</button>
+        <div class="seg" role="group" aria-label="Number of countries">
+          <span>Countries</span>
+          <button type="button" data-n="10">10</button>
+          <button type="button" data-n="15">15</button>
+          <button type="button" data-n="25" aria-pressed="true">25</button>
+        </div>
+      </div>
+
+      <p class="pickline" id="pickLine">Tap any country below to make your pick — it&rsquo;s just your guess, the winner is always random!</p>
+
+      <!-- country chips: this round's remaining line -->
+      <div class="chips" id="chips"></div>
+
+      <!-- series standings -->
+      <div class="standings">
+        <h3>Series Standings <span class="hint">ranked by rounds won</span></h3>
+        <ol id="standingsList"></ol>
+      </div>
+
+      <!-- battle log -->
+      <div class="log">
+        <h3>Battle Log</h3>
+        <ul id="logList">
+          <li class="empty">No eliminations yet. Press Start Series!</li>
+        </ul>
+      </div>
+
+      <p class="howto">
+        <b>How it works:</b> a series is <b>10 rounds back to back</b> — each round winner scores <b>+1 win</b> in the
+        standings, the next round starts on its own, and when the whole series ends a <b>brand-new series
+        starts automatically</b> after a short countdown, so the live never stops. The pace is deliberately
+        <b>slow and intense</b>: marbles cruise slower and every cut is small, so each round is a <b>long
+        fight</b> that is worn down slice by slice. Every marble wears its <b>country flag</b> and stays
+        <b>small and fixed-size</b> the whole battle — it never grows. Each country&rsquo;s strength is its
+        <b>line (50)</b>: the coloured fan sweeping behind a marble is a blade, and when it slices through an
+        enemy, that enemy&rsquo;s line gets <b>cut</b> (watch for the ✂ hits). When a country&rsquo;s line is
+        <b>fully cut down to 0, it is eliminated</b>. The winner is <b>always random</b> — your pick is only a
+        guess and changes nothing, the leader gets ganged up on, and last round&rsquo;s winner starts the next
+        round at <b>44 line</b> so nobody collects crowns back to back. After 95 seconds, <b>Sudden Death</b>
+        doubles every cut and the arena walls slowly close in. Every 10–20 seconds a natural English voice
+        calls out — <b>&ldquo;Double tap to power up your country!&rdquo;</b> or <b>&ldquo;Which country are
+        you watching from? Comment your country!&rdquo;</b> — to keep the live audience hooked.
+      </p>
+
+    </div>
+
+    <script>
+      "use strict";
+
+      /* ================= roster: 25 famous, YouTube-active countries ================= */
+      var ROSTER = [
+        { name: "India",          flag: "🇮🇳", code: "IN", color: "#ff8a2a" },
+        { name: "USA",            flag: "🇺🇸", code: "US", color: "#5b8cff" },
+        { name: "Indonesia",      flag: "🇮🇩", code: "ID", color: "#ff4d4d" },
+        { name: "Brazil",         flag: "🇧🇷", code: "BR", color: "#2fd35f" },
+        { name: "Pakistan",       flag: "🇵🇰", code: "PK", color: "#35d07f" },
+        { name: "Bangladesh",     flag: "🇧🇩", code: "BD", color: "#2fae72" },
+        { name: "Philippines",    flag: "🇵🇭", code: "PH", color: "#4da3ff", short: "PHILIPPINES" },
+        { name: "Vietnam",        flag: "🇻🇳", code: "VN", color: "#ff3838" },
+        { name: "Japan",          flag: "🇯🇵", code: "JP", color: "#dfe6f2" },
+        { name: "Mexico",         flag: "🇲🇽", code: "MX", color: "#3ecf6e" },
+        { name: "Germany",        flag: "🇩🇪", code: "DE", color: "#ffd23f" },
+        { name: "United Kingdom", flag: "🇬🇧", code: "GB", color: "#ff6fb5", short: "UK" },
+        { name: "Turkey",         flag: "🇹🇷", code: "TR", color: "#ff5964" },
+        { name: "Thailand",       flag: "🇹🇭", code: "TH", color: "#7aa5ff" },
+        { name: "France",         flag: "🇫🇷", code: "FR", color: "#38b6ff" },
+        { name: "South Korea",    flag: "🇰🇷", code: "KR", color: "#38bdf8", short: "S. KOREA" },
+        { name: "Spain",          flag: "🇪🇸", code: "ES", color: "#ffb02e" },
+        { name: "Italy",          flag: "🇮🇹", code: "IT", color: "#4dd0a6" },
+        { name: "Egypt",          flag: "🇪🇬", code: "EG", color: "#e8b23a" },
+        { name: "Russia",         flag: "🇷🇺", code: "RU", color: "#b18cff" },
+        { name: "China",          flag: "🇨🇳", code: "CN", color: "#ff5252" },
+        { name: "Canada",         flag: "🇨🇦", code: "CA", color: "#ff7a59" },
+        { name: "Australia",      flag: "🇦🇺", code: "AU", color: "#8bd450" },
+        { name: "Nigeria",        flag: "🇳🇬", code: "NG", color: "#37c978" },
+        { name: "Poland",         flag: "🇵🇱", code: "PL", color: "#ff6b81" }
+      ];
+      var START_LINE = 50;
+      var TOTAL_ROUNDS = 10;
+      var SUDDEN_DEATH_AT = 95; /* seconds — later, so rounds stay long fights */
+      var SERIES_RESTART_IN = 6; /* seconds before a fresh series auto-starts */
+
+      /* ================= drawn flags ================= */
+      function flagDesign(g, code, cx, cy, r) {
+        g.save();
+        g.beginPath();
+        g.arc(cx, cy, r, 0, Math.PI * 2);
+        g.clip();
+        var x = cx - r, y = cy - r, w = 2 * r, h = 2 * r, i;
+        function rect(rx, ry, rw, rh, fill) { g.fillStyle = fill; g.fillRect(rx, ry, rw, rh); }
+        function circ(px, py, pr, fill) { g.beginPath(); g.arc(px, py, pr, 0, Math.PI * 2); g.fillStyle = fill; g.fill(); }
+        function star(px, py, pr, fill) {
+          g.beginPath();
+          for (var s = 0; s < 10; s++) {
+            var ang = -Math.PI / 2 + s * Math.PI / 5;
+            var rr = (s % 2 === 0) ? pr : pr * 0.45;
+            var X = px + Math.cos(ang) * rr, Y = py + Math.sin(ang) * rr;
+            if (s === 0) g.moveTo(X, Y); else g.lineTo(X, Y);
+          }
+          g.closePath(); g.fillStyle = fill; g.fill();
+        }
+        switch (code) {
+          case "IN":
+            rect(x, y, w, h / 3, "#FF9933");
+            rect(x, y + h / 3, w, h / 3, "#ffffff");
+            rect(x, y + 2 * h / 3, w, h / 3 + 1, "#138808");
+            g.beginPath(); g.arc(cx, cy, r * 0.17, 0, Math.PI * 2);
+            g.strokeStyle = "#000080"; g.lineWidth = Math.max(1.5, r * 0.055); g.stroke();
+            circ(cx, cy, r * 0.05, "#000080");
+            break;
+          case "US":
+            rect(x, y, w, h, "#ffffff");
+            for (i = 0; i < 7; i++) if (i % 2 === 0) rect(x, y + i * h / 7, w, h / 7 + 0.5, "#B22234");
+            rect(x, y, w * 0.52, h * 4 / 7, "#3C3B6E");
+            g.fillStyle = "#ffffff";
+            for (var ri = 0; ri < 3; ri++) for (var ci = 0; ci < 4; ci++) {
+              g.beginPath();
+              g.arc(x + w * 0.07 + ci * w * 0.12, y + h * 0.09 + ri * h * 0.16, Math.max(1, r * 0.04), 0, Math.PI * 2);
+              g.fill();
+            }
+            break;
+          case "ID":
+            rect(x, y, w, h / 2, "#E70011");
+            rect(x, y + h / 2, w, h / 2 + 1, "#ffffff");
+            break;
+          case "BR":
+            rect(x, y, w, h, "#009C3B");
+            g.beginPath();
+            g.moveTo(cx, y + h * 0.13);
+            g.lineTo(x + w * 0.87, cy);
+            g.lineTo(cx, y + h * 0.87);
+            g.lineTo(x + w * 0.13, cy);
+            g.closePath();
+            g.fillStyle = "#FFDF00"; g.fill();
+            circ(cx, cy, r * 0.30, "#002776");
+            break;
+          case "PK":
+            rect(x, y, w, h, "#01411C");
+            rect(x, y, w * 0.26, h, "#ffffff");
+            circ(cx + r * 0.14, cy, r * 0.34, "#ffffff");
+            circ(cx + r * 0.28, cy - r * 0.08, r * 0.29, "#01411C");
+            star(cx + r * 0.42, cy - r * 0.3, r * 0.11, "#ffffff");
+            break;
+          case "BD":
+            rect(x, y, w, h, "#006A4E");
+            circ(cx - r * 0.08, cy, r * 0.40, "#F42A41");
+            break;
+          case "PH":
+            rect(x, y, w, h / 2, "#0038A8");
+            rect(x, y + h / 2, w, h / 2 + 1, "#CE1126");
+            g.beginPath();
+            g.moveTo(x, y); g.lineTo(x + w * 0.58, cy); g.lineTo(x, y + h);
+            g.closePath(); g.fillStyle = "#ffffff"; g.fill();
+            star(x + w * 0.2, cy, r * 0.13, "#FCD116");
+            break;
+          case "VN":
+            rect(x, y, w, h, "#DA251D");
+            star(cx, cy, r * 0.34, "#FFDE00");
+            break;
+          case "JP":
+            rect(x, y, w, h, "#ffffff");
+            circ(cx, cy, r * 0.36, "#BC002D");
+            break;
+          case "MX":
+            rect(x, y, w / 3, h, "#006847");
+            rect(x + w / 3, y, w / 3, h, "#ffffff");
+            rect(x + 2 * w / 3, y, w / 3 + 1, h, "#CE1126");
+            circ(cx, cy, r * 0.13, "#8a6d1f");
+            break;
+          case "DE":
+            rect(x, y, w, h / 3, "#111111");
+            rect(x, y + h / 3, w, h / 3, "#DD0000");
+            rect(x, y + 2 * h / 3, w, h / 3 + 1, "#FFCC00");
+            break;
+          case "GB":
+            rect(x, y, w, h, "#012169");
+            g.strokeStyle = "#ffffff"; g.lineWidth = r * 0.32;
+            g.beginPath();
+            g.moveTo(x, y); g.lineTo(x + w, y + h);
+            g.moveTo(x + w, y); g.lineTo(x, y + h);
+            g.stroke();
+            g.strokeStyle = "#C8102E"; g.lineWidth = r * 0.10;
+            g.beginPath();
+            g.moveTo(x, y); g.lineTo(x + w, y + h);
+            g.moveTo(x + w, y); g.lineTo(x, y + h);
+            g.stroke();
+            rect(cx - r * 0.30, y, r * 0.60, h, "#ffffff");
+            rect(x, cy - r * 0.30, w, r * 0.60, "#ffffff");
+            rect(cx - r * 0.18, y, r * 0.36, h, "#C8102E");
+            rect(x, cy - r * 0.18, w, r * 0.36, "#C8102E");
+            break;
+          case "TR":
+            rect(x, y, w, h, "#E30A17");
+            circ(cx - r * 0.1, cy, r * 0.36, "#ffffff");
+            circ(cx - r * 0.02, cy, r * 0.30, "#E30A17");
+            star(cx + r * 0.34, cy, r * 0.13, "#ffffff");
+            break;
+          case "TH":
+            rect(x, y, w, h / 6, "#A51931");
+            rect(x, y + h / 6, w, h / 6, "#F4F5F8");
+            rect(x, y + 2 * h / 6, w, 2 * h / 6, "#2D2A4A");
+            rect(x, y + 4 * h / 6, w, h / 6, "#F4F5F8");
+            rect(x, y + 5 * h / 6, w, h / 6 + 1, "#A51931");
+            break;
+          case "FR":
+            rect(x, y, w / 3, h, "#0055A4");
+            rect(x + w / 3, y, w / 3, h, "#ffffff");
+            rect(x + 2 * w / 3, y, w / 3 + 1, h, "#EF4135");
+            break;
+          case "KR":
+            rect(x, y, w, h, "#ffffff");
+            g.beginPath(); g.arc(cx, cy, r * 0.34, Math.PI, 0); g.fillStyle = "#CD2E3A"; g.fill();
+            g.beginPath(); g.arc(cx, cy, r * 0.34, 0, Math.PI); g.fillStyle = "#0047A0"; g.fill();
+            circ(cx - r * 0.17, cy, r * 0.17, "#CD2E3A");
+            circ(cx + r * 0.17, cy, r * 0.17, "#0047A0");
+            g.fillStyle = "#111111";
+            [[x + w * 0.10, y + h * 0.13], [x + w * 0.78, y + h * 0.13], [x + w * 0.10, y + h * 0.78], [x + w * 0.78, y + h * 0.78]].forEach(function (p) {
+              g.fillRect(p[0], p[1], w * 0.12, Math.max(1.5, r * 0.045));
+              g.fillRect(p[0], p[1] + r * 0.09, w * 0.12, Math.max(1.5, r * 0.045));
+            });
+            break;
+          case "ES":
+            rect(x, y, w, h / 4, "#AA151B");
+            rect(x, y + h / 4, w, h / 2, "#F1BF00");
+            rect(x, y + 3 * h / 4, w, h / 4 + 1, "#AA151B");
+            break;
+          case "IT":
+            rect(x, y, w / 3, h, "#008C45");
+            rect(x + w / 3, y, w / 3, h, "#ffffff");
+            rect(x + 2 * w / 3, y, w / 3 + 1, h, "#CD212A");
+            break;
+          case "EG":
+            rect(x, y, w, h / 3, "#CE1126");
+            rect(x, y + h / 3, w, h / 3, "#ffffff");
+            rect(x, y + 2 * h / 3, w, h / 3 + 1, "#000000");
+            circ(cx, cy, r * 0.11, "#C09300");
+            break;
+          case "RU":
+            rect(x, y, w, h / 3, "#ffffff");
+            rect(x, y + h / 3, w, h / 3, "#0039A6");
+            rect(x, y + 2 * h / 3, w, h / 3 + 1, "#D52B1E");
+            break;
+          case "CN":
+            rect(x, y, w, h, "#DE2910");
+            star(x + w * 0.27, y + h * 0.30, r * 0.21, "#FFDE00");
+            circ(x + w * 0.52, y + h * 0.15, r * 0.07, "#FFDE00");
+            circ(x + w * 0.59, y + h * 0.29, r * 0.07, "#FFDE00");
+            circ(x + w * 0.59, y + h * 0.45, r * 0.07, "#FFDE00");
+            circ(x + w * 0.52, y + h * 0.59, r * 0.07, "#FFDE00");
+            break;
+          case "CA":
+            rect(x, y, w, h, "#ffffff");
+            rect(x, y, w * 0.24, h, "#FF0000");
+            rect(x + w * 0.76, y, w * 0.24 + 1, h, "#FF0000");
+            g.beginPath();
+            g.moveTo(cx, cy - r * 0.36);
+            g.lineTo(cx + r * 0.11, cy - r * 0.13);
+            g.lineTo(cx + r * 0.31, cy - r * 0.20);
+            g.lineTo(cx + r * 0.21, cy + r * 0.01);
+            g.lineTo(cx + r * 0.35, cy + r * 0.05);
+            g.lineTo(cx + r * 0.14, cy + r * 0.17);
+            g.lineTo(cx + r * 0.09, cy + r * 0.38);
+            g.lineTo(cx - r * 0.09, cy + r * 0.38);
+            g.lineTo(cx - r * 0.14, cy + r * 0.17);
+            g.lineTo(cx - r * 0.35, cy + r * 0.05);
+            g.lineTo(cx - r * 0.21, cy + r * 0.01);
+            g.lineTo(cx - r * 0.31, cy - r * 0.20);
+            g.lineTo(cx - r * 0.11, cy - r * 0.13);
+            g.closePath();
+            g.fillStyle = "#FF0000"; g.fill();
+            break;
+          case "AU":
+            rect(x, y, w, h, "#00247D");
+            rect(x, y + h * 0.16, w / 2, h * 0.18, "#ffffff");
+            rect(x + w * 0.16, y, w * 0.18, h / 2, "#ffffff");
+            rect(x, y + h * 0.20, w / 2, h * 0.10, "#C8102E");
+            rect(x + w * 0.20, y, w * 0.10, h / 2, "#C8102E");
+            circ(x + w * 0.25, y + h * 0.74, r * 0.13, "#ffffff");
+            circ(x + w * 0.72, y + h * 0.26, r * 0.06, "#ffffff");
+            circ(x + w * 0.82, y + h * 0.46, r * 0.06, "#ffffff");
+            circ(x + w * 0.70, y + h * 0.60, r * 0.06, "#ffffff");
+            circ(x + w * 0.84, y + h * 0.76, r * 0.06, "#ffffff");
+            break;
+          case "NG":
+            rect(x, y, w / 3, h, "#008751");
+            rect(x + w / 3, y, w / 3, h, "#ffffff");
+            rect(x + 2 * w / 3, y, w / 3 + 1, h, "#008751");
+            break;
+          case "PL":
+            rect(x, y, w, h / 2, "#ffffff");
+            rect(x, y + h / 2, w, h / 2 + 1, "#DC143C");
+            break;
+          default:
+            rect(x, y, w, h, "#888888");
+        }
+        g.restore();
+      }
+      var flagCache = {};
+      function flagArt(code) {
+        if (flagCache[code]) return flagCache[code];
+        var c = document.createElement("canvas");
+        c.width = 120; c.height = 120;
+        flagDesign(c.getContext("2d"), code, 60, 60, 60);
+        var art = { canvas: c, url: c.toDataURL() };
+        flagCache[code] = art;
+        return art;
+      }
+
+      /* ================= dom ================= */
+      var canvas = document.getElementById("arena");
+      var ctx = canvas.getContext("2d");
+      var clockEl = document.getElementById("clock");
+      var aliveEl = document.getElementById("aliveLabel");
+      var roundLabel = document.getElementById("roundLabel");
+      var leaderLabel = document.getElementById("leaderLabel");
+      var speedBtn = document.getElementById("speedBtn");
+      var speedLabel = document.getElementById("speedLabel");
+      var playBtn = document.getElementById("playBtn");
+      var shuffleBtn = document.getElementById("shuffleBtn");
+      var againBtn = document.getElementById("againBtn");
+      var chipsEl = document.getElementById("chips");
+      var standingsEl = document.getElementById("standingsList");
+      var podiumEl = document.getElementById("podium");
+      var logList = document.getElementById("logList");
+      var pickLine = document.getElementById("pickLine");
+      var overlay = document.getElementById("overlay");
+      var ovFlag = document.getElementById("ovFlag");
+      var ovSub = document.getElementById("ovSub");
+      var ovName = document.getElementById("ovName");
+      var ovStats = document.getElementById("ovStats");
+      var ovPick = document.getElementById("ovPick");
+      var ovCount = document.getElementById("ovCount");
+      var topbarEl = document.getElementById("topbar");
+      var soundBtn = document.getElementById("soundBtn");
+      var voiceBtn = document.getElementById("voiceBtn");
+      var momentEl = document.getElementById("moment");
+      var ctaEl = document.getElementById("cta");
+      var ctaBig = document.getElementById("ctaBig");
+      var ctaSub = document.getElementById("ctaSub");
+      var ctaRings = document.getElementById("ctaRings");
+      var segBtns = Array.prototype.slice.call(document.querySelectorAll(".seg button"));
+
+      /* ================= state ================= */
+      var W = 0, H = 0, CX = 0, CY = 0, R = 0;
+      var balls = [];
+      var particles = [];
+      var rings = [];
+      var floats = [];
+      var phase = "idle";              /* idle | battle | intermission | seriesover */
+      var running = false;
+      var elapsed = 0;
+      var speedIdx = 0;
+      var SPEEDS = [
+        { mult: 1, label: "Normal" },
+        { mult: 2, label: "Fast" },
+        { mult: 4, label: "Turbo" }
+      ];
+      var rosterSize = 25;
+      var seriesCountries = [];        /* the countries playing this series */
+      var wins = {};                   /* code -> rounds won this series */
+      var round = 1;
+      var lastRoundWinnerCode = null;  /* starts next round at 44 (no repeat crowns) */
+      var pickCode = null;             /* viewer's guess only — never affects the game */
+      var pairCooldown = {};
+      var cutCooldown = {};
+      var victimReady = {};   /* per-victim cut immunity window — with 25 balls in
+                                 one arena a country can be surrounded, and without
+                                 this every neighbour's blade lands at once and even
+                                 small cuts end a round in seconds */
+      var fxCooldown = {};
+      var cutTimer = 0;
+      var lastDamageAt = 0;
+      var suddenDeathLogged = false;
+      var ballSpeed = 0;
+      var nextId = 1;
+      var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var shake = 0;
+      var audioCtx = null;
+      var soundOn = true;
+      var voiceOn = true;
+      var sfxLast = {};
+      var countdownId = null;
+      var ctaTimeoutId = null;
+      var ctaHideId = null;
+      var ctaAlt = false;
+      var momentHideId = null;
+
+      function shuffle(arr) {
+        var a = arr.slice();
+        for (var i = a.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var t = a[i]; a[i] = a[j]; a[j] = t;
+        }
+        return a;
+      }
+      function findCountry(code) {
+        for (var i = 0; i < ROSTER.length; i++) if (ROSTER[i].code === code) return ROSTER[i];
+        return null;
+      }
+      function findBallByCode(code) {
+        for (var i = 0; i < balls.length; i++) if (balls[i].code === code) return balls[i];
+        return null;
+      }
+      /* FIXED small size for every marble, all battle long — counts never
+         change the size, so small countries stay in the fight and visible */
+      function ballRadius() {
+        return Math.max(11, R * 0.06);
+      }
+      function arenaRadius() {
+        if (elapsed < SUDDEN_DEATH_AT || R <= 0) return R;
+        var p = Math.min(1, (elapsed - SUDDEN_DEATH_AT) / 70);
+        return R * (1 - 0.25 * p);
+      }
+
+      /* ================= sound effects (WebAudio, no files) ================= */
+      function ensureAudio() {
+        if (!audioCtx) {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) { try { audioCtx = new AC(); } catch (e) { audioCtx = null; } }
+        }
+        if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+      }
+      function tone(freq, dur, type, vol, endFreq, delay) {
+        if (!audioCtx || !soundOn) return;
+        var t0 = audioCtx.currentTime + (delay || 0);
+        var o = audioCtx.createOscillator();
+        var g = audioCtx.createGain();
+        o.type = type || "sine";
+        o.frequency.setValueAtTime(freq, t0);
+        if (endFreq) o.frequency.exponentialRampToValueAtTime(Math.max(30, endFreq), t0 + dur);
+        g.gain.setValueAtTime(vol, t0);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(t0); o.stop(t0 + dur + 0.02);
+      }
+      function noiseHit(dur, vol, freq) {
+        if (!audioCtx || !soundOn) return;
+        var n = Math.max(1, Math.floor(audioCtx.sampleRate * dur));
+        var buf = audioCtx.createBuffer(1, n, audioCtx.sampleRate);
+        var d = buf.getChannelData(0);
+        for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+        var src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        var f = audioCtx.createBiquadFilter();
+        f.type = "bandpass"; f.frequency.value = freq || 900; f.Q.value = 0.8;
+        var g = audioCtx.createGain();
+        g.gain.value = vol;
+        src.connect(f); f.connect(g); g.connect(audioCtx.destination);
+        src.start();
+      }
+      function sfxReady(name, gap) {
+        if (!audioCtx || !soundOn) return false;
+        var now = performance.now();
+        if (sfxLast[name] && now - sfxLast[name] < gap) return false;
+        sfxLast[name] = now;
+        return true;
+      }
+      function playClash() { if (!sfxReady("clash", 80)) return; noiseHit(0.07, 0.13, 700); tone(170, 0.08, "triangle", 0.10, 80); }
+      function playCut() { if (!sfxReady("cut", 150)) return; tone(1400, 0.07, "sawtooth", 0.045, 500); }
+      function playWall() { if (!sfxReady("wall", 160)) return; tone(210, 0.05, "sine", 0.04, 150); }
+      function playElim() { if (!sfxReady("elim", 200)) return; noiseHit(0.3, 0.28, 300); tone(320, 0.35, "sawtooth", 0.12, 55); }
+      function playSudden() { if (!sfxReady("sudden", 500)) return; tone(660, 0.14, "square", 0.09); tone(660, 0.14, "square", 0.09, null, 0.18); tone(880, 0.24, "square", 0.11, null, 0.36); }
+      function playStart() { if (!sfxReady("start", 300)) return; tone(440, 0.09, "triangle", 0.12); tone(660, 0.12, "triangle", 0.12, null, 0.09); }
+      function playWin() { if (!sfxReady("win", 500)) return; [523, 659, 784, 1046].forEach(function (fr, i) { tone(fr, 0.16, "triangle", 0.13, null, i * 0.11); }); }
+
+      /* ================= voice prompts (English, for the live audience) =================
+         Realistic voice: pick the most natural-sounding English voice the
+         device offers (Google / Microsoft Natural / Samantha class voices
+         first, generic robotic defaults last), then speak at a calm human
+         pace — slightly slower rate, near-natural pitch, no cartoon lift.
+         A tiny pitch/rate wobble per line keeps it from sounding like the
+         same flat robot recording on repeat. */
+      var cachedVoice = null;
+      function pickNaturalVoice() {
+        if (cachedVoice) return cachedVoice;
+        if (!("speechSynthesis" in window)) return null;
+        var voices = [];
+        try { voices = window.speechSynthesis.getVoices() || []; } catch (e) { voices = []; }
+        var best = null, bestScore = -1;
+        for (var i = 0; i < voices.length; i++) {
+          var v = voices[i];
+          if (!/^en([-_]|$)/i.test(v.lang || "")) continue;
+          var nm = (v.name || "").toLowerCase();
+          var score = 0;
+          if (/natural|neural/.test(nm)) score += 60;                 /* Microsoft Natural / neural voices */
+          if (/google us english/.test(nm)) score += 55;
+          if (/google/.test(nm)) score += 35;
+          if (/samantha|zira|aria|jenny|guy|christopher|eric|emma|ava|ana/.test(nm)) score += 45;
+          if (/microsoft/.test(nm)) score += 20;
+          if (/en[-_]us/i.test(v.lang)) score += 15;
+          if (/en[-_]gb/i.test(v.lang)) score += 8;
+          if (/compact|eloquence|espeak|festival|pico|synthesiser|synthesizer/.test(nm)) score -= 40;
+          if (v.localService === false) score += 5;                    /* cloud voices usually sound more human */
+          if (score > bestScore) { bestScore = score; best = v; }
+        }
+        if (best) cachedVoice = best;
+        return best;
+      }
+      if ("speechSynthesis" in window) {
+        try {
+          window.speechSynthesis.onvoiceschanged = function () {
+            cachedVoice = null;
+            pickNaturalVoice();
+          };
+        } catch (e) {}
+      }
+      function speak(text) {
+        if (!voiceOn) return;
+        try {
+          if (!("speechSynthesis" in window)) return;
+          var u = new SpeechSynthesisUtterance(text);
+          u.lang = "en-US";
+          /* human commentary pace: a touch slower than default, natural pitch */
+          u.rate = 0.92 + Math.random() * 0.04;    /* 0.92–0.96 */
+          u.pitch = 0.96 + Math.random() * 0.05;   /* 0.96–1.01 */
+          u.volume = 1;
+          var v = pickNaturalVoice();
+          if (v) { u.voice = v; u.lang = v.lang || "en-US"; }
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(u);
+        } catch (e) { /* voice is a bonus — never break the game */ }
+      }
+      var CTA_TAP = {
+        big: "DOUBLE TAP!",
+        em: "to power up YOUR COUNTRY",
+        sub: "Every tap counts — keep tapping!",
+        say: "Double tap the screen, everyone, and power up your country. Come on, keep those taps coming!"
+      };
+      var CTA_COMMENT = {
+        big: "WHERE ARE YOU FROM?",
+        em: "COMMENT your country!",
+        sub: "Comment your country to help them win!",
+        say: "Tell me in the comments — which country are you watching from? Comment your country, and help them win this round."
+      };
+      function showCta() {
+        ctaAlt = !ctaAlt;
+        var c = ctaAlt ? CTA_TAP : CTA_COMMENT;
+        ctaBig.innerHTML = c.big + " <em>" + c.em + "</em>";
+        ctaSub.textContent = c.sub;
+        ctaRings.style.display = ctaAlt ? "block" : "none";
+        ctaEl.classList.add("show");
+        speak(c.say);
+        if (ctaHideId) clearTimeout(ctaHideId);
+        ctaHideId = setTimeout(function () { ctaEl.classList.remove("show"); }, 4200);
+      }
+      function scheduleCta() {
+        if (ctaTimeoutId) clearTimeout(ctaTimeoutId);
+        var delay = 10000 + Math.random() * 10000;   /* random 10–20 seconds */
+        ctaTimeoutId = setTimeout(function () {
+          if (phase === "battle" && running) showCta();
+          if (phase === "battle" || phase === "intermission") scheduleCta();
+        }, delay);
+      }
+      function stopCta() {
+        if (ctaTimeoutId) clearTimeout(ctaTimeoutId);
+        ctaTimeoutId = null;
+        ctaEl.classList.remove("show");
+      }
+
+      function showMoment(text, red) {
+        momentEl.textContent = text;
+        momentEl.className = "moment show" + (red ? " red" : "");
+        if (momentHideId) clearTimeout(momentHideId);
+        momentHideId = setTimeout(function () { momentEl.classList.remove("show"); }, 1700);
+      }
+
+      /* ================= series / rounds ================= */
+      function newLineup() {
+        seriesCountries = shuffle(ROSTER).slice(0, rosterSize);
+        wins = {};
+        seriesCountries.forEach(function (c) { wins[c.code] = 0; });
+        round = 1;
+        lastRoundWinnerCode = null;
+      }
+      function buildRound() {
+        balls = [];
+        particles = [];
+        rings = [];
+        floats = [];
+        pairCooldown = {};
+        cutCooldown = {};
+        victimReady = {};
+        fxCooldown = {};
+        cutTimer = 0;
+        lastDamageAt = 0;
+        suddenDeathLogged = false;
+        elapsed = 0;
+        running = false;
+        var n = seriesCountries.length;
+        var order = shuffle(seriesCountries);
+        for (var i = 0; i < n; i++) {
+          var c = order[i];
+          var ang = (i / n) * Math.PI * 2 - Math.PI / 2 + (Math.random() - 0.5) * 0.15;
+          var sx = CX + Math.cos(ang) * (R * 0.84);
+          var sy = CY + Math.sin(ang) * (R * 0.84);
+          var aim = Math.atan2(CY - sy, CX - sx) + (Math.random() - 0.5) * 0.9;
+          balls.push({
+            id: nextId++,
+            name: c.name, short: c.short || c.name, flag: c.flag, code: c.code, color: c.color,
+            x: sx, y: sy,
+            vx: Math.cos(aim), vy: Math.sin(aim),
+            line: START_LINE,
+            r: ballRadius(),
+            alive: true,
+            spd: 0.97 + Math.random() * 0.06,
+            fan: [],
+            sampleT: Math.random() * 0.1,
+            flash: 0,
+            lineFlash: 0,
+            wanderT: Math.random() * 1.5,
+            wanderAng: aim,
+            stuckT: 0, stuckX: sx, stuckY: sy,
+            boostT: 0
+          });
+        }
+        /* no repeat crowns: last round's winner starts this round at 44 */
+        var handicapped = lastRoundWinnerCode ? findBallByCode(lastRoundWinnerCode) : null;
+        if (handicapped) handicapped.line = START_LINE - 6;
+        buildChips();
+        if (phase !== "intermission") {
+          logList.innerHTML = '<li class="empty">No eliminations yet. Press Start Series!</li>';
+        }
+        if (handicapped) {
+          addLog("⚖ Balance: last round winner " + handicapped.flag + " <b>" + handicapped.name + "</b> starts at 44 line — no repeat crowns!");
+        }
+        overlay.classList.remove("show");
+        topbarEl.classList.remove("sudden");
+        shake = 0;
+        canvas.style.transform = "";
+        updatePickLine();
+        updateHud();
+        renderStandings();
+        draw(0);
+      }
+      function startSeries() {
+        ensureAudio();
+        if (countdownId) { clearInterval(countdownId); countdownId = null; }
+        newLineup();
+        phase = "battle";
+        buildRound();
+        running = true;
+        playBtn.textContent = "⏸ Pause";
+        againBtn.textContent = "Next Round";
+        playStart();
+        speak("Welcome to the Marble Country Battle. Ten rounds coming up — which country will take the series?");
+        scheduleCta();
+      }
+      function finishRound(w) {
+        running = false;
+        wins[w.code] = (wins[w.code] || 0) + 1;
+        lastRoundWinnerCode = w.code;
+        spawnSparks(w.x, w.y, w.color, reduceMotion ? 10 : 40);
+        playWin();
+        renderStandings();
+        addLog("🏆 Round " + round + ": <b>" + w.name + "</b> wins! (" + wins[w.code] + " series win" + (wins[w.code] > 1 ? "s" : "") + ")");
+        speak(w.name + " takes round " + round + ". What a fight that was!");
+        ovFlag.innerHTML = '<img alt="' + w.name + ' flag" src="' + flagArt(w.code).url + '">';
+        ovName.textContent = w.name;
+        if (round >= TOTAL_ROUNDS) {
+          phase = "seriesover";
+          finishSeries(w);
+          return;
+        }
+        phase = "intermission";
+        ovSub.textContent = "Round " + round + " Winner";
+        ovStats.textContent = "Won with " + w.line + " line left · Series wins: " + wins[w.code];
+        setPickResult(w);
+        overlay.classList.add("show");
+        playBtn.textContent = "▶ Next Round";
+        againBtn.textContent = "Next Round ▶";
+        var left = 4;
+        ovCount.textContent = "Round " + (round + 1) + " starts in " + left + "…";
+        if (countdownId) clearInterval(countdownId);
+        countdownId = setInterval(function () {
+          left--;
+          if (left <= 0) {
+            clearInterval(countdownId);
+            countdownId = null;
+            advanceRound();
+          } else {
+            ovCount.textContent = "Round " + (round + 1) + " starts in " + left + "…";
+          }
+        }, 1000);
+        updateHud();
+      }
+      function advanceRound() {
+        if (countdownId) { clearInterval(countdownId); countdownId = null; }
+        if (phase !== "intermission") return;
+        round++;
+        phase = "battle";
+        buildRound();
+        running = true;
+        playBtn.textContent = "⏸ Pause";
+        playStart();
+        updateHud();
+      }
+      function seriesChampion() {
+        var best = null;
+        seriesCountries.forEach(function (c) {
+          if (!best || wins[c.code] > wins[best.code]) best = c;
+        });
+        /* tie-break: the most recent round winner among the tied leaders */
+        if (best && lastRoundWinnerCode && wins[lastRoundWinnerCode] === wins[best.code]) {
+          best = findCountry(lastRoundWinnerCode) || best;
+        }
+        return best;
+      }
+      function finishSeries(lastWinner) {
+        var champ = seriesChampion() || lastWinner;
+        stopCta();
+        ovSub.textContent = "Series Champion · 10 Rounds";
+        ovStats.textContent = champ.name + " takes the series with " + wins[champ.code] + " round wins!";
+        ovFlag.innerHTML = '<img alt="' + champ.name + ' flag" src="' + flagArt(champ.code).url + '">';
+        ovName.textContent = champ.name;
+        setPickResult(champ);
+        againBtn.textContent = "Start New Series Now";
+        playBtn.textContent = "▶ Start New Series";
+        overlay.classList.add("show");
+        addLog("👑 <b>" + champ.name + "</b> wins the SERIES with " + wins[champ.code] + " round wins!");
+        addLog("🔁 New series starts automatically in " + SERIES_RESTART_IN + " seconds…");
+        speak(champ.name + " wins the series, with " + wins[champ.code] + " round wins. Congratulations! A brand new series starts in a few seconds, so stay with us.");
+        /* auto-restart: when a full series ends, a fresh one begins on its
+           own — the live never sits dead on the champion screen */
+        var left = SERIES_RESTART_IN;
+        ovCount.textContent = "🔁 New series starts automatically in " + left + "…";
+        if (countdownId) clearInterval(countdownId);
+        countdownId = setInterval(function () {
+          left--;
+          if (left <= 0) {
+            clearInterval(countdownId);
+            countdownId = null;
+            if (phase === "seriesover") startSeries();
+          } else {
+            ovCount.textContent = "🔁 New series starts automatically in " + left + "…";
+          }
+        }, 1000);
+        updateHud();
+      }
+      function setPickResult(w) {
+        if (pickCode && pickCode === w.code) {
+          ovPick.textContent = "🎉 Your pick won!";
+          ovPick.className = "pick-result win";
+        } else if (pickCode) {
+          var p = findCountry(pickCode);
+          ovPick.textContent = p ? "Your pick " + p.name + " didn't take this one." : "";
+          ovPick.className = "pick-result lose";
+        } else {
+          ovPick.textContent = "";
+          ovPick.className = "pick-result";
+        }
+      }
+
+      /* ================= chips / standings / hud ================= */
+      function buildChips() {
+        chipsEl.innerHTML = "";
+        balls.forEach(function (b) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "chip" + (pickCode === b.code ? " picked" : "");
+          btn.id = "chip-" + b.id;
+          btn.style.setProperty("--chip-color", b.color);
+          btn.setAttribute("aria-label", "Pick " + b.name + " to win");
+          btn.innerHTML =
+            '<span class="disc"><img alt="' + b.name + ' flag" src="' + flagArt(b.code).url + '"></span>' +
+            '<span class="name">' + b.short + '</span>' +
+            '<span class="count" id="count-' + b.id + '">' + b.line + '</span>';
+          btn.addEventListener("click", function () { setPick(b.code); });
+          chipsEl.appendChild(btn);
+        });
+      }
+      function setPick(code) {
+        var b = findBallByCode(code);
+        if (!b || !b.alive) return;
+        pickCode = (pickCode === code) ? null : code;
+        balls.forEach(function (x) {
+          var chip = document.getElementById("chip-" + x.id);
+          if (chip) chip.classList.toggle("picked", x.code === pickCode);
+        });
+        updatePickLine();
+      }
+      function updatePickLine() {
+        var sd = phase === "battle" && elapsed >= SUDDEN_DEATH_AT;
+        var pick = pickCode ? findCountry(pickCode) : null;
+        var pickBall = pickCode ? findBallByCode(pickCode) : null;
+        var html;
+        if (pick && pickBall && pickBall.alive) {
+          html = 'Your pick: <b>' + pick.flag + ' ' + pick.name + '</b> — ' + pickBall.line + ' line left · just a guess, the winner is random!';
+        } else if (pick && pickBall && !pickBall.alive) {
+          html = 'Your pick <b>' + pick.flag + ' ' + pick.name + '</b> was eliminated. Tap another country!';
+        } else {
+          html = "Tap any country below to make your pick — it's just your guess, the winner is always random!";
+        }
+        if (sd) html += ' &nbsp;·&nbsp; <span class="sd">⚠ SUDDEN DEATH — cuts ×2</span>';
+        pickLine.innerHTML = html;
+      }
+      function sortedCountries() {
+        return seriesCountries.slice().sort(function (a, b) {
+          if (wins[b.code] !== wins[a.code]) return wins[b.code] - wins[a.code];
+          return a.name < b.name ? -1 : 1;
+        });
+      }
+      function renderStandings() {
+        var sorted = sortedCountries();
+        standingsEl.innerHTML = "";
+        sorted.forEach(function (c, i) {
+          var li = document.createElement("li");
+          if (i === 0 && wins[c.code] > 0) li.className = "top1";
+          else if (i === 1) li.className = "top2";
+          else if (i === 2) li.className = "top3";
+          li.innerHTML =
+            '<span class="rk">' + (i + 1) + '.</span>' +
+            '<img alt="' + c.name + ' flag" src="' + flagArt(c.code).url + '">' +
+            '<span class="nm">' + c.name + '</span>' +
+            '<span class="wn">' + (wins[c.code] || 0) + '</span>';
+          standingsEl.appendChild(li);
+        });
+        /* podium strip: top 3 */
+        podiumEl.innerHTML = "";
+        sorted.slice(0, 3).forEach(function (c, i) {
+          var d = document.createElement("div");
+          d.className = "slot" + (i === 0 ? " first" : "");
+          d.innerHTML =
+            '<span class="rk">' + (i + 1) + '</span>' +
+            '<img alt="' + c.name + ' flag" src="' + flagArt(c.code).url + '">' +
+            '<span class="nm">' + c.code + '</span>' +
+            '<span class="wn">' + (wins[c.code] || 0) + '</span>';
+          podiumEl.appendChild(d);
+        });
+        var lead = sorted[0];
+        leaderLabel.innerHTML = (lead && wins[lead.code] > 0)
+          ? 'Leader: <b>' + lead.flag + ' ' + lead.name + '</b> · ' + wins[lead.code] + ' win' + (wins[lead.code] > 1 ? 's' : '')
+          : 'Series leader: —';
+        roundLabel.textContent = "ROUND " + round + " / " + TOTAL_ROUNDS;
+      }
+      function fmt(t) {
+        var m = Math.floor(t / 60), s = Math.floor(t % 60);
+        return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+      }
+      function updateHud() {
+        clockEl.textContent = fmt(elapsed);
+        var alive = balls.filter(function (b) { return b.alive; }).length;
+        aliveEl.textContent = phase === "seriesover" ? "Series over" : alive + " alive";
+        roundLabel.textContent = "ROUND " + round + " / " + TOTAL_ROUNDS;
+      }
+      function refreshChip(b) {
+        var c = document.getElementById("count-" + b.id);
+        if (c) c.textContent = Math.max(0, b.line);
+        var chip = document.getElementById("chip-" + b.id);
+        if (chip) chip.classList.toggle("dead", !b.alive);
+      }
+      function addLog(html) {
+        var empty = logList.querySelector(".empty");
+        if (empty) empty.remove();
+        var li = document.createElement("li");
+        li.innerHTML = '<span class="t">' + fmt(elapsed) + '</span><span>' + html + '</span>';
+        logList.insertBefore(li, logList.firstChild);
+        while (logList.children.length > 6) logList.removeChild(logList.lastChild);
+      }
+
+      /* ================= physics ================= */
+      function steerToward(b, ang, rate, dt) {
+        var cur = Math.atan2(b.vy, b.vx);
+        var diff = ((ang - cur + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        var turn = Math.max(-rate * dt, Math.min(rate * dt, diff));
+        var sp = Math.sqrt(b.vx * b.vx + b.vy * b.vy) || 1;
+        var na = cur + turn;
+        b.vx = Math.cos(na) * sp;
+        b.vy = Math.sin(na) * sp;
+      }
+      function nearestEnemy(b) {
+        var best = null, bestD = Infinity;
+        for (var j = 0; j < balls.length; j++) {
+          var o = balls[j];
+          if (o === b || !o.alive) continue;
+          var d = (o.x - b.x) * (o.x - b.x) + (o.y - b.y) * (o.y - b.y);
+          if (d < bestD) { bestD = d; best = o; }
+        }
+        return best;
+      }
+      function currentLeader() {
+        var lead = null;
+        balls.forEach(function (x) {
+          if (x.alive && (!lead || x.line > lead.line)) lead = x;
+        });
+        if (!lead) return null;
+        var aliveN = 0, tied = false;
+        balls.forEach(function (x) {
+          if (!x.alive) return;
+          aliveN++;
+          if (x !== lead && x.line === lead.line) tied = true;
+        });
+        return (aliveN < 2 || tied) ? null : lead;
+      }
+
+      function step(dt) {
+        var prevElapsed = elapsed;
+        elapsed += dt;
+        if (!suddenDeathLogged && prevElapsed < SUDDEN_DEATH_AT && elapsed >= SUDDEN_DEATH_AT && phase === "battle") {
+          suddenDeathLogged = true;
+          addLog("⚠ <b>Sudden Death</b> — every cut is doubled and the arena is closing in!");
+          updatePickLine();
+          topbarEl.classList.add("sudden");
+          shake = Math.min(10, shake + 5);
+          playSudden();
+          showMoment("SUDDEN DEATH!", true);
+          speak("Sudden death, everyone. Every cut counts double now — this is where it gets really intense.");
+        }
+        var i, j, b;
+        var hunt = (elapsed - lastDamageAt > 4);
+        var effR = arenaRadius();
+        var leaderNow = currentLeader();
+        /* gentle ramp only — pace stays slow-burn intense, never frantic */
+        var ramp = 1 + Math.min(0.18, elapsed / 360) + (elapsed >= SUDDEN_DEATH_AT ? 0.10 : 0);
+
+        for (i = 0; i < balls.length; i++) {
+          b = balls[i];
+          if (!b.alive) continue;
+          if (b.boostT > 0) b.boostT -= dt;
+
+          /* weaker line = faster marble, so nobody ever sits stuck in a corner */
+          var sizeBoost = 1 + Math.max(0, START_LINE - b.line) / START_LINE * 0.5;
+          var spd = ballSpeed * b.spd * sizeBoost * ramp * (b.boostT > 0 ? 1.45 : 1);
+          var sp = Math.sqrt(b.vx * b.vx + b.vy * b.vy) || 1;
+          b.vx = b.vx / sp * spd;
+          b.vy = b.vy / sp * spd;
+
+          b.wanderT -= dt;
+          if (b.wanderT <= 0) {
+            b.wanderT = 1.1 + Math.random() * 1.6;
+            b.wanderAng = Math.atan2(b.vy, b.vx) + (Math.random() - 0.5) * 1.7;
+          }
+          steerToward(b, b.wanderAng, 0.55, dt);
+
+          var targetEnemy = (leaderNow && leaderNow !== b) ? leaderNow : nearestEnemy(b);
+          if (targetEnemy) {
+            var steerRate = hunt ? 2.4 : (targetEnemy === leaderNow ? 1.15 : 0.5);
+            steerToward(b, Math.atan2(targetEnemy.y - b.y, targetEnemy.x - b.x), steerRate, dt);
+            sp = Math.sqrt(b.vx * b.vx + b.vy * b.vy) || 1;
+            b.vx = b.vx / sp * spd;
+            b.vy = b.vy / sp * spd;
+          }
+
+          b.x += b.vx * dt;
+          b.y += b.vy * dt;
+
+          /* anti-stuck watchdog */
+          b.stuckT += dt;
+          if (b.stuckT >= 0.9) {
+            var movedD = Math.sqrt((b.x - b.stuckX) * (b.x - b.stuckX) + (b.y - b.stuckY) * (b.y - b.stuckY));
+            if (movedD < R * 0.07) {
+              var foe = nearestEnemy(b);
+              var kick = foe ? Math.atan2(foe.y - b.y, foe.x - b.x) : Math.atan2(CY - b.y, CX - b.x);
+              kick += (Math.random() - 0.5) * 0.5;
+              b.vx = Math.cos(kick) * spd * 1.45;
+              b.vy = Math.sin(kick) * spd * 1.45;
+              b.boostT = 0.9;
+              rings.push({ x: b.x, y: b.y, r: 4, life: 0.3, maxLife: 0.3, color: b.color });
+              if (rings.length > 12) rings.splice(0, rings.length - 12);
+            }
+            b.stuckT = 0;
+            b.stuckX = b.x;
+            b.stuckY = b.y;
+          }
+
+          if (b.flash > 0) b.flash = Math.max(0, b.flash - dt * 3);
+          if (b.lineFlash > 0) b.lineFlash = Math.max(0, b.lineFlash - dt * 2.2);
+
+          /* fan points expire fast — the fan is a live blade, never a
+             permanent scribble, and nothing is left behind at the spawn side */
+          while (b.fan.length && elapsed - b.fan[0].t > 2.4) b.fan.shift();
+
+          /* wall bounce */
+          var dx = b.x - CX, dy = b.y - CY;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          var maxD = effR - b.r - 4;
+          if (dist > maxD && dist > 0) {
+            var nx = dx / dist, ny = dy / dist;
+            b.x = CX + nx * maxD;
+            b.y = CY + ny * maxD;
+            var dot = b.vx * nx + b.vy * ny;
+            b.vx -= 2 * dot * nx;
+            b.vy -= 2 * dot * ny;
+            pushFan(b, CX + nx * (effR - 5), CY + ny * (effR - 5));
+            playWall();
+          }
+
+          /* fan sampling: rim point in the marble's direction of travel */
+          b.sampleT -= dt;
+          if (b.sampleT <= 0) {
+            b.sampleT = 0.055;
+            var px = b.x - CX, py = b.y - CY;
+            var pl = Math.sqrt(px * px + py * py);
+            if (pl < 6) { px = b.vx; py = b.vy; pl = Math.sqrt(px * px + py * py) || 1; }
+            pushFan(b, CX + px / pl * (effR - 5), CY + py / pl * (effR - 5));
+          }
+        }
+
+        /* ball vs ball: a clean bounce with sparks — clashes move the fight
+           around, but only LINE CUTS take a country down */
+        for (i = 0; i < balls.length; i++) {
+          for (j = i + 1; j < balls.length; j++) {
+            var a = balls[i], c2 = balls[j];
+            if (!a.alive || !c2.alive) continue;
+            var ddx = c2.x - a.x, ddy = c2.y - a.y;
+            var d2 = ddx * ddx + ddy * ddy;
+            var minD = a.r + c2.r;
+            if (d2 > 0 && d2 < minD * minD) {
+              var d = Math.sqrt(d2);
+              var ux = ddx / d, uy = ddy / d;
+              var overlap = (minD - d) / 2;
+              a.x -= ux * overlap; a.y -= uy * overlap;
+              c2.x += ux * overlap; c2.y += uy * overlap;
+              var aN = a.vx * ux + a.vy * uy;
+              var cN = c2.vx * ux + c2.vy * uy;
+              a.vx += (cN - aN) * ux; a.vy += (cN - aN) * uy;
+              c2.vx += (aN - cN) * ux; c2.vy += (aN - cN) * uy;
+              clashFx(a, c2);
+            }
+          }
+        }
+
+        /* line cuts — the elimination mechanic (checked less often and
+           cutting less per hit, so every round is a long fight) */
+        cutTimer -= dt;
+        if (cutTimer <= 0 && phase === "battle") {
+          cutTimer = 0.22;
+          checkLineCuts();
+        }
+
+        for (i = particles.length - 1; i >= 0; i--) {
+          var p = particles[i];
+          p.life -= dt;
+          if (p.life <= 0) { particles.splice(i, 1); continue; }
+          p.x += p.vx * dt; p.y += p.vy * dt;
+          p.vx *= 0.96; p.vy *= 0.96;
+        }
+        for (i = rings.length - 1; i >= 0; i--) {
+          var rg = rings[i];
+          rg.life -= dt;
+          if (rg.life <= 0) { rings.splice(i, 1); continue; }
+          rg.r += 150 * dt;
+        }
+        for (i = floats.length - 1; i >= 0; i--) {
+          var f = floats[i];
+          f.life -= dt;
+          if (f.life <= 0) { floats.splice(i, 1); continue; }
+          f.y -= 30 * dt;
+        }
+
+        updateHud();
+        if (Math.floor(elapsed) !== Math.floor(prevElapsed)) updatePickLine();
+      }
+
+      function pushFan(b, x, y) {
+        var last = b.fan[b.fan.length - 1];
+        if (last && Math.abs(last.x - x) < 2 && Math.abs(last.y - y) < 2) return;
+        b.fan.push({ x: x, y: y, t: elapsed });
+        if (b.fan.length > 48) b.fan.splice(0, b.fan.length - 48);
+      }
+      function segHit(px, py, x1, y1, x2, y2) {
+        var dx = x2 - x1, dy = y2 - y1;
+        var l2 = dx * dx + dy * dy;
+        var t = l2 ? ((px - x1) * dx + (py - y1) * dy) / l2 : 0;
+        t = Math.max(0, Math.min(1, t));
+        var qx = x1 + t * dx, qy = y1 + t * dy;
+        var ex = px - qx, ey = py - qy;
+        return { d: Math.sqrt(ex * ex + ey * ey), x: qx, y: qy };
+      }
+      function checkLineCuts() {
+        for (var i = 0; i < balls.length; i++) {
+          var a = balls[i];
+          if (!a.alive || a.fan.length < 2) continue;
+          for (var j = 0; j < balls.length; j++) {
+            var v = balls[j];
+            if (v === a || !v.alive) continue;
+            if (victimReady[v.id] && elapsed < victimReady[v.id]) continue;
+            var key = a.id + ">" + v.id;
+            if (cutCooldown[key] && elapsed < cutCooldown[key]) continue;
+            var cdx = v.x - a.x, cdy = v.y - a.y;
+            if (cdx * cdx + cdy * cdy < (a.r + v.r * 0.6) * (a.r + v.r * 0.6)) continue;
+            var hit = null;
+            var kMin = Math.max(0, a.fan.length - 4);
+            for (var k = a.fan.length - 1; k >= kMin; k--) {
+              var p = a.fan[k];
+              var res = segHit(v.x, v.y, a.x, a.y, p.x, p.y);
+              if (res.d < v.r * 1.05) { hit = res; break; }
+            }
+            if (hit) {
+              cutCooldown[key] = elapsed + 2.1;
+              victimReady[v.id] = elapsed + 1.3;
+              applyCut(a, v, hit.x, hit.y);
+              if (phase !== "battle") return;
+            }
+          }
+        }
+      }
+      function applyCut(attacker, victim, hx, hy) {
+        /* small cuts only — a line is worn down slice by slice over a long
+           fight, never chunked away. Random luck roll on every cut, so no
+           country is favoured, ever */
+        var dmg = 1;
+        if (Math.random() < 0.4) dmg += 1;                      /* 1, sometimes 2 */
+        if (attacker.line < victim.line && Math.random() < 0.5) dmg += 1;  /* underdog slices a little deeper */
+        var lead = currentLeader();
+        if (lead && victim === lead) dmg += 1;                  /* bounty on the leader */
+        if (elapsed >= SUDDEN_DEATH_AT) dmg *= 2;
+        dmg = Math.min(dmg, victim.line);
+        victim.line -= dmg;
+        if (attacker.line <= victim.line) attacker.line = Math.min(START_LINE + 10, attacker.line + 1);
+        lastDamageAt = elapsed;
+        victim.flash = 1;
+        attacker.lineFlash = 1;
+        spawnSparks(hx, hy, victim.color, 5);
+        playCut();
+        floats.push({ x: hx, y: hy - 8, text: "✂ -" + dmg, color: attacker.color, life: 0.9, maxLife: 0.9 });
+        if (floats.length > 16) floats.splice(0, floats.length - 16);
+        refreshChip(victim);
+        refreshChip(attacker);
+        if (pickCode === victim.code || pickCode === attacker.code) updatePickLine();
+        if (victim.line <= 0 && victim.alive) eliminate(victim, attacker);
+      }
+      function clashFx(a, b) {
+        var key = a.id < b.id ? a.id + ":" + b.id : b.id + ":" + a.id;
+        if (fxCooldown[key] && elapsed < fxCooldown[key]) return;
+        fxCooldown[key] = elapsed + 0.3;
+        var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        spawnSparks(mx, my, "#ffffff", 4);
+        playClash();
+        rings.push({ x: mx, y: my, r: 5, life: 0.3, maxLife: 0.3, color: a.color });
+        if (rings.length > 12) rings.splice(0, rings.length - 12);
+      }
+      function eliminate(loser, winner) {
+        loser.alive = false;
+        loser.line = 0;
+        loser.fan = [];
+        spawnSparks(loser.x, loser.y, loser.color, reduceMotion ? 8 : 26);
+        shake = Math.min(11, shake + 6);
+        playElim();
+        refreshChip(loser);
+        addLog("✂ " + loser.flag + " <b>" + loser.name + "</b>'s line fully cut by " + winner.flag + " <b>" + winner.name + "</b> — eliminated!");
+        if (pickCode === loser.code) updatePickLine();
+        var alive = balls.filter(function (x) { return x.alive; });
+        if (alive.length === 5) showMoment("TOP 5!", false);
+        else if (alive.length === 3) showMoment("TOP 3!", false);
+        else if (alive.length === 2) showMoment("FINAL DUEL!", true);
+        if (alive.length === 1) finishRound(alive[0]);
+        updateHud();
+      }
+      function spawnSparks(x, y, color, n) {
+        for (var i = 0; i < n; i++) {
+          var ang = Math.random() * Math.PI * 2;
+          var sp = 40 + Math.random() * 190;
+          particles.push({
+            x: x, y: y,
+            vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+            life: 0.45 + Math.random() * 0.5,
+            maxLife: 0.95,
+            color: color,
+            size: 1.6 + Math.random() * 2.6
+          });
+        }
+      }
+
+      /* ================= drawing ================= */
+      function draw(now) {
+        ctx.clearRect(0, 0, W, H);
+        var g = ctx.createRadialGradient(CX, CY, R * 0.1, CX, CY, R);
+        g.addColorStop(0, "#0a0f22");
+        g.addColorStop(0.75, "#060a18");
+        g.addColorStop(1, "#04060f");
+        ctx.beginPath();
+        ctx.arc(CX, CY, R, 0, Math.PI * 2);
+        ctx.fillStyle = g;
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(120,140,200,0.07)";
+        ctx.lineWidth = 1.5;
+        [0.34, 0.58].forEach(function (f) {
+          ctx.beginPath();
+          ctx.arc(CX, CY, R * f, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+
+        /* line-fans: live blades only. Points expire after ~2.4s, so the
+           arena never fills with permanent lines and NO mark is left
+           behind where a ball started. No spawn anchors are drawn at all. */
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(CX, CY, R - 3, 0, Math.PI * 2);
+        ctx.clip();
+        balls.forEach(function (b) {
+          if (!b.alive || b.fan.length < 2) return;
+          var n = b.fan.length;
+          ctx.strokeStyle = b.color;
+          ctx.globalAlpha = 0.14;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          b.fan.forEach(function (p) {
+            ctx.moveTo(b.x, b.y);
+            ctx.lineTo(p.x, p.y);
+          });
+          ctx.stroke();
+          var kMin = Math.max(0, n - 10);
+          ctx.globalAlpha = b.lineFlash > 0 ? 0.9 : 0.45;
+          ctx.lineWidth = b.lineFlash > 0 ? 2.2 : 1.2;
+          ctx.beginPath();
+          for (var k = kMin; k < n; k++) {
+            ctx.moveTo(b.x, b.y);
+            ctx.lineTo(b.fan[k].x, b.fan[k].y);
+          }
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        });
+
+        particles.forEach(function (p) {
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+
+        rings.forEach(function (rg) {
+          ctx.globalAlpha = Math.max(0, rg.life / rg.maxLife) * 0.85;
+          ctx.beginPath();
+          ctx.arc(rg.x, rg.y, rg.r, 0, Math.PI * 2);
+          ctx.strokeStyle = rg.color;
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+        });
+        ctx.globalAlpha = 1;
+        ctx.restore();
+
+        /* rim */
+        ctx.beginPath();
+        ctx.arc(CX, CY, R - 2, 0, Math.PI * 2);
+        ctx.strokeStyle = "#131c38";
+        ctx.lineWidth = 7;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.setLineDash([10, 14]);
+        ctx.lineDashOffset = -now * 0.012;
+        ctx.arc(CX, CY, R - 2, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(64,224,208,0.55)";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        if (elapsed >= SUDDEN_DEATH_AT && phase === "battle") {
+          ctx.beginPath();
+          ctx.arc(CX, CY, arenaRadius(), 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(255,82,82," + (0.4 + 0.22 * Math.sin(now * 0.008)) + ")";
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([9, 8]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        var leader = null;
+        if (elapsed > 0 && phase === "battle") {
+          balls.forEach(function (b) {
+            if (b.alive && (!leader || b.line > leader.line)) leader = b;
+          });
+          if (balls.filter(function (b) { return b.alive; }).length < 2) leader = null;
+        }
+
+        /* balls: the marble IS the flag — fixed small size, always */
+        balls.forEach(function (b) {
+          if (!b.alive) return;
+          if (leader === b) {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r + 5, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(255,210,63,0.9)";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.lineDashOffset = -now * 0.02;
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          if (pickCode === b.code) {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r + 6 + Math.sin(now * 0.006) * 2, 0, Math.PI * 2);
+            ctx.strokeStyle = "#ffb02e";
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+          }
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(flagArt(b.code).canvas, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+          var bg = ctx.createRadialGradient(b.x - b.r * 0.35, b.y - b.r * 0.4, b.r * 0.1, b.x, b.y, b.r * 1.05);
+          bg.addColorStop(0, "rgba(255,255,255,0.38)");
+          bg.addColorStop(0.45, "rgba(255,255,255,0.05)");
+          bg.addColorStop(1, "rgba(0,0,10,0.30)");
+          ctx.fillStyle = bg;
+          ctx.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+          ctx.restore();
+
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = b.flash > 0 ? "#ffffff" : b.color;
+          ctx.stroke();
+
+          /* compact label: ISO code + remaining line */
+          ctx.font = "800 " + Math.max(10, R * 0.03) + "px Outfit, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          var label = b.code + " (" + Math.max(0, b.line) + ")";
+          var ly = b.y - b.r - 11;
+          if (ly < 15) ly = b.y + b.r + 13;
+          var halfW = ctx.measureText(label).width / 2;
+          var lx = Math.max(CX - R + halfW + 8, Math.min(CX + R - halfW - 8, b.x));
+          ly = Math.max(13, Math.min(H - 10, ly));
+          var ldx = lx - CX, ldy = ly - CY;
+          var ldist = Math.sqrt(ldx * ldx + ldy * ldy);
+          var maxL = R - halfW - 14;
+          if (ldist > maxL && ldist > 0) {
+            lx = CX + ldx / ldist * maxL;
+            ly = CY + ldy / ldist * maxL;
+          }
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = "rgba(2,4,10,0.85)";
+          ctx.strokeText(label, lx, ly);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(label, lx, ly);
+        });
+
+        floats.forEach(function (f) {
+          ctx.globalAlpha = Math.max(0, f.life / f.maxLife);
+          ctx.font = "900 " + Math.max(13, R * 0.038) + "px Outfit, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = "rgba(2,4,10,0.9)";
+          ctx.strokeText(f.text, f.x, f.y);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(f.text, f.x, f.y);
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      /* ================= loop ================= */
+      var lastT = 0;
+      function loop(ts) {
+        requestAnimationFrame(loop);
+        if (!lastT) lastT = ts;
+        var frameDt = Math.min(0.05, (ts - lastT) / 1000);
+        lastT = ts;
+        if (running && phase === "battle") {
+          var simDt = frameDt * SPEEDS[speedIdx].mult;
+          var steps = Math.max(1, Math.ceil(simDt / (1 / 120)));
+          var h = simDt / steps;
+          for (var s = 0; s < steps; s++) {
+            step(h);
+            if (phase !== "battle") break;
+          }
+        }
+        if (shake > 0.25 && !reduceMotion) {
+          canvas.style.transform = "translate(" + ((Math.random() - 0.5) * shake).toFixed(1) + "px," + ((Math.random() - 0.5) * shake).toFixed(1) + "px)";
+        } else if (canvas.style.transform) {
+          canvas.style.transform = "";
+        }
+        if (shake > 0) shake = Math.max(0, shake - frameDt * 24);
+        draw(ts);
+      }
+
+      /* ================= sizing ================= */
+      function resize() {
+        var rect = canvas.getBoundingClientRect();
+        var dpr = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.width * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        W = rect.width; H = rect.width;
+        CX = W / 2; CY = H / 2; R = W / 2 - 6;
+        ballSpeed = R * 0.60;   /* slower base pace — long, tense fights */
+        balls.forEach(function (b) {
+          var dx = b.x - CX, dy = b.y - CY;
+          var d = Math.sqrt(dx * dx + dy * dy);
+          var maxD = R - b.r - 6;
+          if (d > maxD && d > 0) { b.x = CX + dx / d * maxD; b.y = CY + dy / d * maxD; }
+          b.r = ballRadius();
+          b.fan = [];
+        });
+        draw(0);
+      }
+      window.addEventListener("resize", resize);
+
+      /* ================= controls ================= */
+      playBtn.addEventListener("click", function () {
+        ensureAudio();
+        if (phase === "idle" || phase === "seriesover") {
+          startSeries();
+        } else if (phase === "intermission") {
+          advanceRound();
+        } else {
+          running = !running;
+          playBtn.textContent = running ? "⏸ Pause" : "▶ Resume Battle";
+          if (running) playStart();
+        }
+      });
+      soundBtn.addEventListener("click", function () {
+        soundOn = !soundOn;
+        soundBtn.textContent = soundOn ? "♪ Sound On" : "♪ Sound Off";
+        soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
+        if (soundOn) { ensureAudio(); playStart(); }
+      });
+      voiceBtn.addEventListener("click", function () {
+        voiceOn = !voiceOn;
+        voiceBtn.textContent = voiceOn ? "🔊 Voice On" : "🔇 Voice Off";
+        voiceBtn.setAttribute("aria-pressed", voiceOn ? "true" : "false");
+        if (!voiceOn && "speechSynthesis" in window) {
+          try { window.speechSynthesis.cancel(); } catch (e) {}
+        }
+        if (voiceOn) speak("Voice on!");
+      });
+      shuffleBtn.addEventListener("click", function () {
+        if (countdownId) { clearInterval(countdownId); countdownId = null; }
+        stopCta();
+        phase = "idle";
+        running = false;
+        pickCode = null;
+        newLineup();
+        buildRound();
+        playBtn.textContent = "▶ Start Series";
+      });
+      againBtn.addEventListener("click", function () {
+        ensureAudio();
+        if (phase === "seriesover" || phase === "idle") {
+          startSeries();
+        } else if (phase === "intermission") {
+          advanceRound();
+        }
+      });
+      speedBtn.addEventListener("click", function () {
+        speedIdx = (speedIdx + 1) % SPEEDS.length;
+        speedLabel.textContent = SPEEDS[speedIdx].label;
+      });
+      segBtns.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          rosterSize = parseInt(btn.getAttribute("data-n"), 10);
+          segBtns.forEach(function (x) { x.setAttribute("aria-pressed", x === btn ? "true" : "false"); });
+          if (countdownId) { clearInterval(countdownId); countdownId = null; }
+          stopCta();
+          phase = "idle";
+          running = false;
+          pickCode = null;
+          newLineup();
+          buildRound();
+          playBtn.textContent = "▶ Start Series";
+        });
+      });
+      if ("speechSynthesis" in window) {
+        try { window.speechSynthesis.getVoices(); } catch (e) {}
+      }
+
+      /* small test/debug handle */
+      window.MarbleGame = {
+        start: startSeries,
+        showCta: showCta,
+        state: function () {
+          return {
+            phase: phase,
+            round: round,
+            running: running,
+            alive: balls.filter(function (b) { return b.alive; }).length,
+            wins: wins
+          };
+        }
+      };
+
+      /* ================= go ================= */
+      newLineup();
+      resize();
+      buildRound();
+      requestAnimationFrame(loop);
+    </script>
+  </body>
+</html>
